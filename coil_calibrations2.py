@@ -289,10 +289,10 @@ def plot_1d(meas, scan, numbers_p, numbers_m, scan_coil, counts_p, counts_m, pol
             pols = pols[sort_ind]
         ax.errorbar(scan_coil, counts_p, yerr=np.sqrt(counts_p), label="Meas NSF")  # , fmt="o"
         ax.errorbar(scan_coil, counts_m, yerr=np.sqrt(counts_m), label="Meas SF")  # , fmt="o"
-        ax.set_xlabel("{} (A)".format(data_file_p.scan_coil))
+        ax.set_xlabel("{} (A)".format(data_file_p.scan_posn))
         ax.set_ylabel("Counts")
-        text_pairing_coil = "{}: {:.1f} A ".format(data_file_p.pair_coil,
-                                                   data_file_p.coils_currents[data_file_p.pair_coil])
+        text_pairing_coil = "{}: {:.1f} A ".format(data_file_p.pair_posn,
+                                                   data_file_p.coils_currents[data_file_p.pair_posn])
         ax.set_title(text_pairing_coil)
         ax.tick_params(axis="both", direction="in")
         ax2 = ax.twinx()  # instantiate a second axes that shares the same x-axis
@@ -381,11 +381,8 @@ def coils_fitting(meas, scan):
             data = data_file.scan_data
             if len(data.shape) == 1:
                 data_4d = np.zeros((4, data.shape[0]))
-                index = data_file.CHANNELS.index(data_file.scan_channel)
-                if index == 4:
-                    index -= 1
+                index = univ.positions.index(data_file.scan_posn)
                 data_4d[index, :] = data
-                # print(data_5d)
                 scan_coils = np.append(scan_coils, data_4d, axis=1)
             else:
                 scan_coils = np.append(scan_coils, data, axis=1)

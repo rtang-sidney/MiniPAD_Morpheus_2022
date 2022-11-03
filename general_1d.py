@@ -73,7 +73,7 @@ for scan_1d in SCAN_1D:
     fig, ax = plt.subplots()
     ax.plot(data_file.scan_x, data_file.scan_count, "o")
     ax.tick_params(axis="both", direction="in")
-    ax.set_xlabel("{} (A)".format(data_file.scan_coil))
+    ax.set_xlabel("{} (A)".format(data_file.scan_posn))
     ax.set_ylabel("Counts")
 
     plot_x = np.linspace(-3, 3, num=100)

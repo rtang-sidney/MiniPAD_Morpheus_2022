@@ -284,8 +284,8 @@ def plot_1d_scans(measure, index, pre_oi, pre_ii, pre_if, pre_of, shift_oi,
         ax.set_xlabel("{} (A)".format(data_file.POSITIONS[data_file.CHANNELS.index(data_file.scan_name)]))
         ax.set_ylabel("Counts")
         ax.set_ylim(count_min * 0.9, count_max * 1.1)
-        text_pairing_coil = "{}: {:.1f} A ".format(data_file.POSITIONS[data_file.CHANNELS.index(data_file.pair_coil)],
-                                                   data_file.COILS_CURRENTS[data_file.pair_coil])
+        text_pairing_coil = "{}: {:.1f} A ".format(data_file.POSITIONS[data_file.CHANNELS.index(data_file.pair_posn)],
+                                                   data_file.COILS_CURRENTS[data_file.pair_posn])
         ax.set_title(text_pairing_coil)
         ax.tick_params(axis="both", direction="in")
         fig.savefig(filename, bbox_inches='tight')

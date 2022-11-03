@@ -127,16 +127,16 @@ def plot_1d(meas, scan, numbers_p, numbers_m, pre_i, pre_f, shift_i, shift_f, p_
         c_i = 0
         c_f = 0
         coils = [c_i, c_f]
-        if data_file_p.scan_coil in [univ.oi_posn, univ.ii_posn]:
+        if data_file_p.scan_posn in [univ.oi_posn, univ.ii_posn]:
             coils[0] = np.linspace(-3, 3, 61)
-            coils[1] = data_file_p.coils_currents[data_file_p.pair_coil]
+            coils[1] = data_file_p.coils_currents[data_file_p.pair_posn]
             coil_plot = coils[0]
-        elif data_file_p.scan_coil in [univ.of_posn, univ.if_posn]:
+        elif data_file_p.scan_posn in [univ.of_posn, univ.if_posn]:
             coils[1] = np.linspace(-3, 3, 61)
-            coils[0] = data_file_p.coils_currents[data_file_p.pair_coil]
+            coils[0] = data_file_p.coils_currents[data_file_p.pair_posn]
             coil_plot = coils[1]
         else:
-            raise ValueError("Invalid scan coil {}".format(data_file_p.scan_coil))
+            raise ValueError("Invalid scan coil {}".format(data_file_p.scan_posn))
         c_i, c_f = coils
         scan_coil = data_file_p.scan_x
         scan_counts_p = data_file_p.scan_count
@@ -158,11 +158,11 @@ def plot_1d(meas, scan, numbers_p, numbers_m, pre_i, pre_f, shift_i, shift_f, p_
         fig, ax = plt.subplots(figsize=(4.5, 3))  # figsize=(10, 5)
         ax.errorbar(scan_coil, scan_pol, yerr=scan_err)  # , fmt="o"
         ax.plot(coil_plot, fit_pol)
-        ax.set_xlabel("{} (A)".format(data_file_p.scan_coil))
+        ax.set_xlabel("{} (A)".format(data_file_p.scan_posn))
         ax.set_ylabel("Counts")
         ax.set_ylim(-1, 1)
-        text_pairing_coil = "{}: {:.1f} A ".format(data_file_p.pair_coil,
-                                                   data_file_p.coils_currents[data_file_p.pair_coil])
+        text_pairing_coil = "{}: {:.1f} A ".format(data_file_p.pair_posn,
+                                                   data_file_p.coils_currents[data_file_p.pair_posn])
         ax.set_title(text_pairing_coil)
         ax.tick_params(axis="both", direction="in")
         fig.savefig(filename, bbox_inches='tight')
@@ -190,11 +190,11 @@ def coils_fitting(meas, scan):
             print("Scan No. {} is not complete".format(scan_number))
             numbers_p.remove(scan_number)
             continue
-        if data_file.scan_coil in [univ.oi_posn, univ.ii_posn]:
+        if data_file.scan_posn in [univ.oi_posn, univ.ii_posn]:
             coils[0] = np.append(coils[0], data_file.scan_x)
-        elif data_file.scan_coil in [univ.of_posn, univ.if_posn]:
+        elif data_file.scan_posn in [univ.of_posn, univ.if_posn]:
             coils[1] = np.append(coils[1],
-                                 np.repeat(data_file.coils_currents[data_file.pair_coil], data_file.scan_x.shape[0]))
+                                 np.repeat(data_file.coils_currents[data_file.pair_posn], data_file.scan_x.shape[0]))
         else:
             continue
         counts_p = np.append(counts_p, data_file.scan_count)
