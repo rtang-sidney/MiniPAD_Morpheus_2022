@@ -123,16 +123,18 @@ class RawData:
             self.scan_data = data[:, 1]
             # print(self.scan_data.shape)
             self.scan_x = self.scan_data
-            self.step_size = np.round(np.mean(np.diff(self.scan_x)), 1)
+            self.step_size = np.round(np.mean(np.diff(self.scan_x[1:])), 1)
             self._scan_channel = self.variables_all[0]
         else:
             self.scan_data = data[:, 1:self._number_variables + 1].transpose()
 
             # the steps were often recorded with mistakes. check and correct it is necessary
-            steps = np.mean(np.diff(self.scan_data, axis=1), axis=1)
+            steps = np.mean(np.diff(self.scan_data[:, 1:], axis=1), axis=1)
             self._scanned_ind = np.abs(steps) > 9e-2
             if np.count_nonzero(self._scanned_ind) != 1 and self._number_variables > 0:
-                raise RuntimeError("Failed to find scan object")
+                raise RuntimeError(
+                    "Failed to find scan object, scanned index {}, No. variables {}".format(self._scanned_ind,
+                                                                                            self._number_variables))
             # steps[self.scanned_ind] would be an array with size of 1
             self._scanned_ind = np.nonzero(self._scanned_ind)[0][0]
             self.step_size = round(steps[self._scanned_ind], 1)

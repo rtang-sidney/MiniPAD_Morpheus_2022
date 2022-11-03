@@ -66,10 +66,15 @@ class Parameters:
             self.scan_if_p = [3181, 3183]
             self.scan_if_m = [3182, 3184]
             self.d_spacing = univ.d_mnsi011
-            # self.scan_all_p = [3173, 3175, 3179, 3181, 3183]
-            # self.scan_all_m = [3174, 3174, 3180, 3182, 3184]
-            self.scan_all_p = list(np.append(np.arange(3173, 3216 + 1, step=2), np.arange(3218, 3257 + 1, step=2)))
-            self.scan_all_m = list(np.append(np.arange(3174, 3216 + 1, step=2), np.arange(3219, 3257 + 1, step=2)))
+            # self.scan_all_p = [3173, 3175, 3179, 3181, 3183,3185]
+            # self.scan_all_m = [3174, 3174, 3180, 3182, 3184,3186]
+            self.scan_all_p = list(np.concatenate((np.arange(3173, 3216 + 1, step=2), np.arange(3218, 3229 + 1, step=2),
+                                                   np.arange(3230, 3257 + 1, step=4),
+                                                   np.arange(3231, 3257 + 1, step=4))))
+            self.scan_all_m = list(np.concatenate((np.arange(3174, 3216 + 1, step=2), np.arange(3219, 3229 + 1, step=2),
+                                                   np.arange(3232, 3257 + 1, step=4),
+                                                   np.arange(3233, 3257 + 1, step=4))))
+            # self.scan_all = list(np.append(np.arange(3173, 3216 + 1), np.arange(3218, 3257 + 1)))
         else:
             raise ValueError("Invalid sample name given. {}".format(sample_name))
         # twotheta = 99.0
@@ -362,8 +367,23 @@ def coils_fitting(meas, scan):
         numbers_p = meas.scan_if_p
         numbers_m = meas.scan_if_m
     elif scan == SCAN_ALL:
+        # scan_all = []
+        # ind = 0
+        # while ind in range(len(meas.scan_all)):
+        #     scan_number = meas.scan_all[ind]
+        #     data_file = RawData(scan_number)
+        #     if data_file.relevant_scan:
+        #         scan_all.append(scan_number)
+        #     else:
+        #         print("Scan No. {} is not complete".format(scan_number))
+        #     ind += 1
+        # numbers_p = scan_all[::2]
+        # numbers_m = scan_all[1::2]
         numbers_p = meas.scan_all_p
         numbers_m = meas.scan_all_m
+        print(numbers_p, "\n", numbers_m)
+        if len(numbers_p) != len(numbers_m):
+            raise RuntimeError("Different numbers of files with NSF and SF\nNSF:{}\nSF:{}".format(numbers_p, numbers_m))
     else:
         raise ValueError("Invalid scan type.")
 
@@ -371,8 +391,11 @@ def coils_fitting(meas, scan):
     counts_m = np.array([])
     scan_coil = np.array([])
     scan_coils = np.empty((4, 0))
+    scan_no_p = np.array([])
+    scan_no_m = np.array([])
     for scan_number in numbers_p:
         data_file = RawData(scan_number)
+        # print(scan_number, data_file.relevant_scan)
         if data_file.relevant_scan is False:
             print("Scan No. {} is not complete".format(scan_number))
             numbers_p.remove(scan_number)
@@ -389,13 +412,17 @@ def coils_fitting(meas, scan):
         else:
             scan_coil = np.append(scan_coil, data_file.scan_x)
         counts_p = np.append(counts_p, data_file.scan_count)
+        scan_no_p = np.append(scan_no_p, np.repeat(scan_number, data_file.scan_count.shape[0]))
     for scan_number in numbers_m:
         data_file = RawData(scan_number)
+        # print(scan_number, data_file.relevant_scan)
         if data_file.relevant_scan is False:
-            print("Scan No. {} is not complete".format(scan_number))
+            print("Scan No. {} is not relevant".format(scan_number))
             numbers_m.remove(scan_number)
             continue
         counts_m = np.append(counts_m, data_file.scan_count)
+        scan_no_m = np.append(scan_no_m, np.repeat(scan_number, data_file.scan_count.shape[0]))
+    # print(counts_p.shape[0], counts_m.shape[0])
     pols = univ.count2pol(counts_p, counts_m)
     # scan_coil = np.linspace(-2.9, 2.9, num=59)
     if scan == SCAN_ALL:
@@ -408,10 +435,12 @@ def coils_fitting(meas, scan):
                                                                                                    pols)
         # print(scan_coil, "\n", pols)
         # print(scan_coils[0, 1], scan_coils[1, 1], scan_coils[2, 1], scan_coils[3, 1], pols[1])
-        f = open("CoilCurrents.dat", "w+")
+        f = open("CoilCurrents.dat", "w+")  #
+        print(len(scan_no_p), scan_coils.shape[1])
         for i in range(scan_coils.shape[1]):
-            f.write("{:f}, {:f}, {:f}, {:f}, {:f}\n".format(scan_coils[0, i], scan_coils[1, i], scan_coils[2, i],
-                                                            scan_coils[3, i], pols[i]))
+            f.write("{}, {}, {:f}, {:f}, {:f}, {:f}, {:f}\n".format(scan_no_p[i], scan_no_m[i], scan_coils[0, i],
+                                                                    scan_coils[1, i], scan_coils[2, i],
+                                                                    scan_coils[3, i], pols[i]))
         f.close()
 
         print(pre_oi, shift_oi)

@@ -2,4 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import universal_params as univ
 
-print(univ.positions + [univ.positions[-1]])
+a = np.random.rand(5,5)
+b = a[1:]
+
+print(b)
