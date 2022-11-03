@@ -6,10 +6,8 @@ import universal_params as univ
 class RawData:
     PATTERN_POINTS = re.compile(r"([0-9]*)\sPoints")
     PATTERN_VARIABLE = re.compile(r"se_ps[1-4]_out[1-2]?")
-    PATTERN_STEP = re.compile(r"[+-]?[0-9*]\.[0-9]*e?[+-]?[0-9]*")
-    # PATTERN_CURRENTS = re.compile(r"(se_ps[1-4]_out[1-2]?)\s*=\s*([1-9]*.*[1-9]*)")
-    PATTERN_MONITOR = re.compile(r"scan\s\S*\s\S*\s\S*\s\S*\s([0-9]*)")  # tti[1-2]_out[1-2]\s
     PATTERN_TEMP = re.compile(r"TEMP\s*=\s*([1-9]*.*[1-9]*)")
+    PATTERN_MONITOR = re.compile(r"Preset\s*([0-9]*\.[0-9]*)")
 
     DATA_HEADER = "**************************** DATA ******************************************\n"
     SCANNING_VARIABLE_KEY = "Scanning Variables"
@@ -27,7 +25,6 @@ class RawData:
     TEMP = "TEMP"
 
     PLOT_Y_LABEL = 'Normalised counts'
-    MONITOR_REFERENCE = int(6e6)
 
     TTI2_OUT1 = "se_ps4_out1"
     TTI2_OUT2 = "se_ps4_out2"
@@ -94,6 +91,11 @@ class RawData:
                 if self._number_points == 0:
                     self.relevant_scan = False
                     raise ValueError("No number of points found")
+                if re.search(self.PATTERN_MONITOR, line):
+                    # print(re.search(self.PATTERN_MONITOR, line).groups())
+                    self.monitor_count = int(float(re.search(self.PATTERN_MONITOR, line).groups()[0]))
+                else:
+                    raise RuntimeError("No monitor count found in line: {}".format(line))
             # elif re.search(self.PATTERN_CURRENTS, line):
             #     channel, current = re.search(self.PATTERN_CURRENTS, line).groups()
             #     if channel in self.CHANNELS:
@@ -113,6 +115,8 @@ class RawData:
                     raise ValueError("No relevant variables found")
             else:
                 pass
+        if self.monitor_count == 0:
+            raise RuntimeError("No monitor count found")
 
     def _get_data(self):
         if self._number_variables == 0:

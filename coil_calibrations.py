@@ -20,10 +20,10 @@ FOLDER_1D_MNSI = "Scan_1D_MnSi"
 
 FOLDER_SCAN_2D = "Scan_2D"
 
-SCAN_OI = "Outer, upstream"
-SCAN_OF = "Outer, downstream"
-SCAN_II = "Inner, upstream"
-SCAN_IF = "Inner, downstream"
+SCAN_OI = univ.oi_posn
+SCAN_OF = univ.of_posn
+SCAN_II = univ.ii_posn
+SCAN_IF = univ.if_posn
 SCAN_ALL = "All"
 
 VAR_C_OI = "c_oi"
@@ -77,11 +77,10 @@ class Parameters:
             # self.scan_all = list(np.append(np.arange(3173, 3216 + 1), np.arange(3218, 3257 + 1)))
         else:
             raise ValueError("Invalid sample name given. {}".format(sample_name))
-        # twotheta = 99.0
-        # self.theta = np.arcsin(univ.wavelength / (2 * self.d_spacing))
-        self.theta = np.deg2rad(99.9 / 2.0)
-        self.delta_i = self.theta
-        self.delta_f = np.pi - self.theta
+
+        self.theta = np.deg2rad(99.0 / 2.0)
+        self.delta_i = np.pi / 2.0 - self.theta
+        self.delta_f = np.pi / 2.0 + self.theta
 
         self.period_oi = 8.0
         self.period_of = 6.0
@@ -97,8 +96,8 @@ class Parameters:
         self.frequency_if = 1.031450
         self.shift_oi = -0.007004
         self.shift_of = -0.107698
-        self.shift_ii = -0.719645
-        self.shift_if = -0.707311
+        self.shift_ii = -0.389777
+        self.shift_if = -0.377453
 
 
 def coil_system(c_oi, c_of, c_ii, c_if, pre_oi, pre_of, pre_ii, pre_if, shift_oi, shift_of, shift_ii, shift_if, delta_i,
@@ -107,7 +106,6 @@ def coil_system(c_oi, c_of, c_ii, c_if, pre_oi, pre_of, pre_ii, pre_if, shift_oi
     alpha_f = pre_of * c_of + shift_of
     beta_i = pre_ii * c_ii + shift_ii
     beta_f = pre_if * c_if + shift_if
-    # print(alpha_i, alpha_f, delta_i - delta_f)
     pol = np.cos(alpha_i) * np.cos(alpha_f) - np.sin(alpha_i) * np.sin(alpha_f) * np.cos(
         beta_i + beta_f + delta_i - delta_f)
     pol *= p_init
@@ -119,8 +117,8 @@ def cosine_simple(current, scale, pre, phase, y0):
 
 
 def phase2current(precession_phase, prefactor, shift):
-    if abs(precession_phase) < 1e-4:
-        return 0
+    # if abs(precession_phase) < 1e-4:
+    #     return 0
     current = (precession_phase - shift) / prefactor
     return current
 
@@ -219,7 +217,7 @@ def lmfit_2d(meas, scan, data_c, data_pol):
     #        result.params[VAR_PRE_II].value, result.params[VAR_SHIFT_IF].value, result.params[VAR_P_INIT].value
 
 
-def lm_fit_4d(meas, data_oi, data_of, data_ii, data_if, data_pol):
+def lm_fit_4d(meas, monitor, data_oi, data_of, data_ii, data_if, data_pol):
     fmodel = Model(coil_system, independent_vars=[VAR_C_OI, VAR_C_OF, VAR_C_II, VAR_C_IF])
     fmodel.set_param_hint(VAR_PRE_OI, value=meas.frequency_oi, min=meas.frequency_oi * 0.8,
                           max=meas.frequency_oi * 1.2)
@@ -241,7 +239,8 @@ def lm_fit_4d(meas, data_oi, data_of, data_ii, data_if, data_pol):
     fmodel.set_param_hint(VAR_DELTA_F, value=meas.delta_f, vary=False)
     fmodel.set_param_hint(VAR_P_INIT, value=0.8, min=0.6, max=1.0)
     params = fmodel.make_params()
-    result = fmodel.fit(data_pol, params, c_oi=data_oi, c_of=data_of, c_ii=data_ii, c_if=data_if)
+    result = fmodel.fit(data_pol, params, c_oi=data_oi, c_of=data_of, c_ii=data_ii, c_if=data_if,
+                        weights=monitor)  # / np.sum(monitor)
     # errors = result.eval_uncertainty()
     print(result.fit_report())
     return result.params[VAR_PRE_OI].value, result.params[VAR_PRE_OF].value, result.params[VAR_PRE_II].value, \
@@ -315,6 +314,83 @@ def plot_1d(meas, scan, numbers_p, numbers_m, scan_coil, counts_p, counts_m, pol
         plt.close(fig)
 
 
+def plot_1d2(meas: Parameters, numbers_p, numbers_m, pre_oi, pre_of, pre_ii, pre_if, shift_oi, shift_of, shift_ii,
+             shift_if, p_init):
+    for numor, scan_number_p in enumerate(numbers_p):
+        data_file_p = RawData(scan_number_p)
+        coils = data_file_p.scan_data
+        if coils.ndim == 1:
+            coil_4d = np.zeros((4, coils.shape[0]))
+            index = univ.positions.index(data_file_p.scan_posn)
+            coil_4d[index] = coils
+        else:
+            coil_4d = coils
+        counts_p = data_file_p.scan_count
+        scan_number_m = numbers_m[numor]
+        data_file_m = RawData(scan_number_m)
+        counts_m = data_file_m.scan_count
+        pols = univ.count2pol(counts_p, counts_m)
+
+        c_oi, c_of, c_ii, c_if = coil_4d[0], coil_4d[1], coil_4d[2], coil_4d[3]
+        coil_plot = np.linspace(-3, 3, 61)
+        if data_file_p.scan_posn == SCAN_OI:
+            c_oi = coil_plot
+            c_of = np.round(np.mean(c_of), 1)
+            c_ii = np.round(np.mean(c_ii), 1)
+            c_if = np.round(np.mean(c_if), 1)
+            plt_ttl = "{}: {:.1f} A, {}: {:.1f} A, {}: {:.1f} A".format(SCAN_OF, c_of, SCAN_II, c_ii, SCAN_IF, c_if)
+        elif data_file_p.scan_posn == SCAN_OF:
+            c_oi = np.round(np.mean(c_oi), 1)
+            c_of = coil_plot
+            c_ii = np.round(np.mean(c_ii), 1)
+            c_if = np.round(np.mean(c_if), 1)
+            plt_ttl = "{}: {:.1f} A, {}: {:.1f} A, {}: {:.1f} A".format(SCAN_OI, c_oi, SCAN_II, c_ii, SCAN_IF, c_if)
+        elif data_file_p.scan_posn == SCAN_II:
+            c_oi = np.round(np.mean(c_oi), 1)
+            c_of = np.round(np.mean(c_of), 1)
+            c_ii = coil_plot
+            c_if = np.round(np.mean(c_if), 1)
+            plt_ttl = "{}: {:.1f} A, {}: {:.1f} A, {}: {:.1f} A".format(SCAN_OF, c_of, SCAN_OI, c_oi, SCAN_IF, c_if)
+        elif data_file_p.scan_posn == SCAN_IF:
+            c_oi = np.round(np.mean(c_oi), 1)
+            c_of = np.round(np.mean(c_of), 1)
+            c_ii = np.round(np.mean(c_ii), 1)
+            c_if = coil_plot
+            plt_ttl = "{}: {:.1f} A, {}: {:.1f} A, {}: {:.1f} A".format(SCAN_OF, c_of, SCAN_II, c_ii, SCAN_II, c_ii)
+        else:
+            raise ValueError("Invalid scan name given.")
+
+        fit_pol = coil_system(c_oi, c_of, c_ii, c_if, pre_oi, pre_of, pre_ii, pre_if, shift_oi, shift_of, shift_ii,
+                              shift_if, meas.delta_i, meas.delta_f, p_init)
+        filename = "Scan{:d}_{:d}.png".format(scan_number_p, scan_number_m)
+        filename = "/".join([FOLDER_1D_MNSI, filename])
+        fig, ax = plt.subplots(figsize=(15, 10))
+        sort_ind = np.argsort(data_file_p.scan_x)
+        scan_x = data_file_p.scan_x[sort_ind]
+        counts_p = counts_p[sort_ind]
+        counts_m = counts_m[sort_ind]
+        pols = pols[sort_ind]
+        ax.errorbar(scan_x, counts_p, yerr=np.sqrt(counts_p), label="Meas NSF")  # , fmt="o"
+        ax.errorbar(scan_x, counts_m, yerr=np.sqrt(counts_m), label="Meas SF")  # , fmt="o"
+        ax.set_xlabel("{} (A)".format(data_file_p.scan_posn))
+        ax.set_ylabel("Counts")
+        ax.set_title(plt_ttl)
+        ax.tick_params(axis="both", direction="in")
+        ax2 = ax.twinx()  # instantiate a second axes that shares the same x-axis
+        colour_ax2 = "green"
+        ax2.plot(scan_x, pols, "o", color=colour_ax2, label="Pol Meas")
+        ax2.plot(coil_plot, fit_pol, color=colour_ax2, label="Pol Fit")
+        ax2.tick_params(axis="y", direction="in")
+        ax2.set_ylabel(r"Polarisation", color=colour_ax2)
+        ax2.tick_params(axis='y', color=colour_ax2, labelcolor=colour_ax2)
+        ax.legend(loc=2)
+        ax2.legend(loc=1)
+        ax2.set_ylim(-1, 1)
+        fig.savefig(filename, bbox_inches='tight')
+        # plt.show()
+        plt.close(fig)
+
+
 def plot_4d(meas, pre_oi, pre_of, pre_ii, pre_if, shift_oi, shift_of, shift_ii, shift_if, p_init):
     filename = "OuterCoils.png"
     fig, ax = plt.subplots(figsize=(15, 10))  # figsize=(10, 5)
@@ -367,18 +443,6 @@ def coils_fitting(meas, scan):
         numbers_p = meas.scan_if_p
         numbers_m = meas.scan_if_m
     elif scan == SCAN_ALL:
-        # scan_all = []
-        # ind = 0
-        # while ind in range(len(meas.scan_all)):
-        #     scan_number = meas.scan_all[ind]
-        #     data_file = RawData(scan_number)
-        #     if data_file.relevant_scan:
-        #         scan_all.append(scan_number)
-        #     else:
-        #         print("Scan No. {} is not complete".format(scan_number))
-        #     ind += 1
-        # numbers_p = scan_all[::2]
-        # numbers_m = scan_all[1::2]
         numbers_p = meas.scan_all_p
         numbers_m = meas.scan_all_m
         print(numbers_p, "\n", numbers_m)
@@ -387,12 +451,13 @@ def coils_fitting(meas, scan):
     else:
         raise ValueError("Invalid scan type.")
 
-    counts_p = np.array([])
-    counts_m = np.array([])
+    counts_p = np.array([], dtype=int)
+    counts_m = np.array([], dtype=int)
     scan_coil = np.array([])
     scan_coils = np.empty((4, 0))
-    scan_no_p = np.array([])
-    scan_no_m = np.array([])
+    scan_no_p = np.array([], dtype=int)
+    scan_no_m = np.array([], dtype=int)
+    scan_monitor = np.array([], dtype=int)
     for scan_number in numbers_p:
         data_file = RawData(scan_number)
         # print(scan_number, data_file.relevant_scan)
@@ -413,6 +478,7 @@ def coils_fitting(meas, scan):
             scan_coil = np.append(scan_coil, data_file.scan_x)
         counts_p = np.append(counts_p, data_file.scan_count)
         scan_no_p = np.append(scan_no_p, np.repeat(scan_number, data_file.scan_count.shape[0]))
+        scan_monitor = np.append(scan_monitor, np.repeat(data_file.monitor_count, data_file.scan_count.shape[0]))
     for scan_number in numbers_m:
         data_file = RawData(scan_number)
         # print(scan_number, data_file.relevant_scan)
@@ -427,7 +493,7 @@ def coils_fitting(meas, scan):
     # scan_coil = np.linspace(-2.9, 2.9, num=59)
     if scan == SCAN_ALL:
         # print(scan_coils, "\n", counts_p, "\n", counts_m)
-        pre_oi, pre_of, pre_ii, pre_if, shift_oi, shift_of, shift_ii, shift_if, p_init = lm_fit_4d(meas,
+        pre_oi, pre_of, pre_ii, pre_if, shift_oi, shift_of, shift_ii, shift_if, p_init = lm_fit_4d(meas, scan_monitor,
                                                                                                    scan_coils[0, :],
                                                                                                    scan_coils[1, :],
                                                                                                    scan_coils[2, :],
@@ -438,13 +504,15 @@ def coils_fitting(meas, scan):
         f = open("CoilCurrents.dat", "w+")  #
         print(len(scan_no_p), scan_coils.shape[1])
         for i in range(scan_coils.shape[1]):
-            f.write("{}, {}, {:f}, {:f}, {:f}, {:f}, {:f}\n".format(scan_no_p[i], scan_no_m[i], scan_coils[0, i],
-                                                                    scan_coils[1, i], scan_coils[2, i],
-                                                                    scan_coils[3, i], pols[i]))
+            f.write("{}, {}, {}, {:f}, {:f}, {:f}, {:f}, {:f}\n".format(scan_no_p[i], scan_no_m[i], scan_monitor[i],
+                                                                        scan_coils[0, i], scan_coils[1, i],
+                                                                        scan_coils[2, i], scan_coils[3, i], pols[i]))
         f.close()
 
         print(pre_oi, shift_oi)
         plot_4d(meas, pre_oi, pre_of, pre_ii, pre_if, shift_oi, shift_of, shift_ii, shift_if, p_init)
+        plot_1d2(meas, numbers_p, numbers_m, pre_oi, pre_of, pre_ii, pre_if, shift_oi, shift_of, shift_ii, shift_if,
+                 p_init)
         return pre_oi, pre_of, pre_ii, pre_if, shift_oi, shift_of, shift_ii, shift_if, p_init
     else:
         print(scan_coil, "\n", counts_p, "\n", counts_m)
@@ -480,16 +548,23 @@ pre_oi, pre_of, pre_ii, pre_if, shift_oi, shift_of, shift_ii, shift_if, p_init =
                                                                                                scan=SCAN_ALL)
 
 f = open("PolMat_Nuc.dat", "w+")
-f.write("pi, pf, pif,coil_o1 (°), coil_i1 (°), coil_i2 (°), coil_o2 (°),\n")
+f.write("pi, pf, pif, coil_o1 (°), coil_o2 (°), coil_i1 (°), coil_i2 (°),\n")
 for pi in AXES:
     for pf in AXES:
         alpha_i, alpha_f, beta_i, beta_f = polarisation2angles(pi, pf, measure.delta_i, measure.delta_f)
+        print(pi, pf, np.rad2deg(alpha_i), np.rad2deg(alpha_f), np.rad2deg(beta_i), np.rad2deg(beta_f))
         c_oi = phase2current(precession_phase=alpha_i, prefactor=pre_oi, shift=shift_oi)
         c_of = phase2current(precession_phase=alpha_f, prefactor=pre_of, shift=shift_of)
         c_ii = phase2current(precession_phase=beta_i, prefactor=pre_ii, shift=shift_ii)
         c_if = phase2current(precession_phase=beta_f, prefactor=pre_if, shift=shift_if)
-        pol = coil_system(c_oi, c_of, c_ii, c_if, pre_oi, pre_of, pre_ii, pre_if, shift_oi, shift_of, shift_ii,
-                          shift_if, measure.delta_i, measure.delta_f, p_init)
+        alpha_i = pre_oi * c_oi + shift_oi
+        alpha_f = pre_of * c_of + shift_of
+        beta_i = pre_ii * c_ii + shift_ii
+        beta_f = pre_if * c_if + shift_if
+        print(pi, pf, np.rad2deg(alpha_i), np.rad2deg(alpha_f), np.rad2deg(beta_i), np.rad2deg(beta_f))
+        pol = coil_system(c_oi=c_oi, c_of=c_of, c_ii=c_ii, c_if=c_if, pre_oi=pre_oi, pre_of=pre_of, pre_ii=pre_ii,
+                          pre_if=pre_if, shift_oi=shift_oi, shift_of=shift_of, shift_ii=shift_ii, shift_if=shift_if,
+                          delta_i=measure.delta_i, delta_f=measure.delta_f, p_init=p_init)
         f.write("{:s}, {:s}, {:f}, {:.1f}°, {:.1f}°, {:.1f}°, {:.1f}°\n".format(pi, pf, pol, np.rad2deg(alpha_i),
                                                                                 np.rad2deg(alpha_f), np.rad2deg(beta_i),
                                                                                 np.rad2deg(beta_f)))
