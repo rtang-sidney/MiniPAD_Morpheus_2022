@@ -89,9 +89,10 @@ coil_params = np.loadtxt(univ.fname_parameters, skiprows=1, delimiter=",")
 pre_oi, pre_of, shift_oi, shift_of = coil_params[0, :]
 pre_ii, pre_if, shift_ii, shift_if = coil_params[1, :]
 # theta = np.arcsin(univ.wavelength / (2 * univ.d_mnsi011))
-twotheta = np.deg2rad(99.9)  # 99.0
+twotheta = np.deg2rad(99.0)  # 99.0
 theta = twotheta / 2.0
-delta_i = theta
-delta_f = np.pi - theta
+delta_i = np.pi / 2.0 - theta
+delta_f = np.pi / 2.0 + theta
+
 matrix2current(pre_oi, pre_of, pre_ii, pre_if, shift_oi, shift_of, shift_ii, shift_if, delta_i, delta_f)
 print()

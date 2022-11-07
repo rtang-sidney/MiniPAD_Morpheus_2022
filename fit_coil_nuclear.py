@@ -120,7 +120,7 @@ def lm_fit_4d(meas, fmodel, data_oi, data_ii, data_if, data_of, data_count, delt
     fmodel.set_param_hint('pre_oi', value=meas.frequency_oi, min=meas.frequency_oi * 0.9,
                           max=meas.frequency_oi * 1.1)
     fmodel.set_param_hint('pre_ii', value=np.pi / 2.5, min=np.pi / 3.5, max=np.pi / 1.5)
-    if meas.sample == SAMPLE_PG:
+    if meas.peak == SAMPLE_PG:
         fmodel.set_param_hint('pre_if', value=-np.pi / 2.5, min=-np.pi / 2, max=-np.pi / 3.5)
     else:
         fmodel.set_param_hint('pre_if', value=np.pi / 2.5, min=np.pi / 3.5, max=np.pi / 1.5)
