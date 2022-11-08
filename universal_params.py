@@ -14,8 +14,8 @@ positions = [oi_posn, of_posn, ii_posn, if_posn]
 fname_parameters = "Coil_Parameters.dat"
 
 
-def count2pol(count_plus, count_minus):
-    return (count_plus - count_minus) / (count_plus + count_minus)
+def count2pol(count_nsf, count_sf):
+    return (count_nsf - count_sf) / (count_nsf + count_sf)
 
 
 def err_count2pol(count_plus, count_minus):

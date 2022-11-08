@@ -40,7 +40,7 @@ class RawData:
     CHANNELS_POSITIONS = dict(zip(CHANNELS, univ.positions + [univ.positions[-1]]))
 
     def __init__(self, file_index):
-        print("In process: {}".format(file_index))
+        # print("In process: {}".format(file_index))
         self.relevant_scan = True
 
         # initialise current of all 4 coils (5 channels)
