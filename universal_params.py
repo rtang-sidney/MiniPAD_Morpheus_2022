@@ -4,10 +4,10 @@ wavelength = 4.905921e-10
 d_pg002 = 3.55e-10
 d_mnsi011 = 4.556e-10
 
-oi_posn = 'outer, upstream'
-of_posn = 'outer, downstream'
-ii_posn = 'inner, upstream'
-if_posn = 'inner, downstream'
+oi_posn = 'OuterIncoming'
+of_posn = 'OuterOutgoing'
+ii_posn = 'InnerIncoming'
+if_posn = 'InnerOutgoing'
 positions = [oi_posn, of_posn, ii_posn, if_posn]
 
 # coils_positions = dict(zip(channels, positions))

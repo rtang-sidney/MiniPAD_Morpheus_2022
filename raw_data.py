@@ -166,8 +166,10 @@ class RawData:
             self.scan_x = -self.scan_x
             # self._scan_channel = self.TTI2_OUT1
             self._scanned_ind = -2
+        else:
+            self.scan_data[-2] += self.scan_data[-1]
 
-        # after the correction of scan_x, the whole data set has to be updated
+            # after the correction of scan_x, the whole data set has to be updated
         if self._number_variables == 1:
             self.scan_data = self.scan_x
             # self.coils_currents[self.CHANNELS_POSITIONS[self._scan_channel]] = self.scan_x
