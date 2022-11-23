@@ -146,9 +146,9 @@ class MeasMag:
         self.theta = np.deg2rad(97.12 / 2.0)
         self.delta_i = np.pi / 2.0 - self.theta
         self.delta_f = np.pi / 2.0 + self.theta
-        self.matrix = np.zeros((3, 3))
-        self.matrix[0] = -1, -1, -1
-        self.p_arr = np.zeros(3)
+        self.matrix = np.array([[0, -1, -1], [0, 0, -1], [0, -1, 0]])
+        # self.matrix[0] = 1
+        self.p_arr = np.array([0, 0, 0])
 
 
 class FitParams:
@@ -206,7 +206,7 @@ class FitParams:
         fmodel.set_param_hint(VAR_DELTA_I, value=meas.delta_i, vary=False)
         fmodel.set_param_hint(VAR_DELTA_F, value=meas.delta_f, vary=False)
         set_pinit(model=fmodel, meas=meas, p_init=self.p_init)
-        # set_matrix(model=fmodel, meas=meas)
+        set_matrix(model=fmodel, meas=meas)
         params = fmodel.make_params()
 
         if self.obj == OBJ_IF:
@@ -231,8 +231,8 @@ class FitParams:
             print(self.obj, fmodel.independent_vars)
             if self.obj == OBJ_CNT:
                 self.amp = result.params[VAR_AMP].value
-            # if self.obj == OBJ_MAG:
-            # self.matrix = [result.params[var].value for var in VAR_MATRIX]
+            if self.obj == OBJ_MAG:
+                self.matrix = [result.params[var].value for var in VAR_MATRIX]
             # # print("Variables matrix: {}".format(VAR_MATRIX))
             # # print("Matrix: {}".format(self.matrix))
             # print(["Matrix element {}, value {}".format(var, result.params[var].value) for var in VAR_MATRIX])
@@ -276,30 +276,30 @@ def coil2angle(current, prefactor, shift):
 
 
 def coil2pol(c_oi, c_of, c_ii, c_if, pre_oi, pre_of, pre_ii, pre_if, shift_oi, shift_of, shift_ii, shift_if, delta_i,
-             delta_f, p_init):  # , m_xx, m_yx, m_zx, m_xy, m_yy, m_zy, m_xz, m_yz, m_zz, p1, p2, p3
+             delta_f, p_init, m_xx, m_yx, m_zx, m_xy, m_yy, m_zy, m_xz, m_yz, m_zz, p1, p2, p3):  #
     # calculate the polarisation given the coil parameters
     # The shifts of the inner coils are entangled and hence denoted by only one parameter
-    # trf_mtx = np.array([[m_xx, m_yx, m_zx], [m_xy, m_yy, m_zy], [m_xz, m_yz, m_zz]])
-    # indep_arr = np.array([p1, p2, p3])
+    trf_mtx = np.array([[m_xx, m_yx, m_zx], [m_xy, m_yy, m_zy], [m_xz, m_yz, m_zz]])
+    indep_arr = np.array([p1, p2, p3])
     currents = (c_oi, c_of, c_ii, c_if)
     prefactors = (pre_oi, pre_of, pre_ii, pre_if)
     shifts = (shift_oi, shift_of, shift_ii, shift_if)
     alpha_i, alpha_f, beta_i, beta_f = coils2angles(currents, prefactors, shifts)
+
     pi_scatt = pol_rot_in(alpha_i=alpha_i, beta_i=beta_i, delta_i=delta_i, p_init=p_init)
-    # pf_scatt = np.matmul(trf_mtx, pi_scatt) / 3.0
-    pf_scatt = pi_scatt
-    # for i in range(pf_scatt.shape[0]):
-    #     pf_scatt[i] += indep_arr[i]
+    pf_scatt = np.matmul(trf_mtx, pi_scatt)
+    for i in range(pf_scatt.shape[0]):
+        pf_scatt[i] += indep_arr[i]
     pf_out_z = pol_rot_out(alpha_f=alpha_f, beta_f=beta_f, delta_f=delta_f, pf_scatt=pf_scatt)
     return pf_out_z
 
 
 def coil2count(amp, pm, c_oi, c_of, c_ii, c_if, pre_oi, pre_of, pre_ii, pre_if, shift_oi, shift_of, shift_ii, shift_if,
-               delta_i, delta_f, p_init):  # , m_xx, m_yx, m_zx, m_xy, m_yy, m_zy, m_xz, m_yz, m_zz, p1, p2, p3
+               delta_i, delta_f, p_init, m_xx, m_yx, m_zx, m_xy, m_yy, m_zy, m_xz, m_yz, m_zz, p1, p2, p3):  #
     # gives the neutron count providing the coil parameters
     # pm is the sign
     pol = coil2pol(c_oi, c_of, c_ii, c_if, pre_oi, pre_of, pre_ii, pre_if, shift_oi, shift_of, shift_ii, shift_if,
-                   delta_i, delta_f, p_init)  # , m_xx, m_yx, m_zx, m_xy, m_yy, m_zy, m_xz, m_yz, m_zz, p1, p2, p3
+                   delta_i, delta_f, p_init, m_xx, m_yx, m_zx, m_xy, m_yy, m_zy, m_xz, m_yz, m_zz, p1, p2, p3)  #
     return amp * (pol * pm + 1)
 
 
@@ -352,9 +352,9 @@ def set_matrix(model, meas):
             model.set_param_hint(VAR_PARR[i], value=meas.p_arr[i], vary=False)
     elif isinstance(meas, MeasMag):
         for i in range(len(VAR_MATRIX)):
-            model.set_param_hint(VAR_MATRIX[i], value=meas.matrix.flatten()[i], vary=False)
+            model.set_param_hint(VAR_MATRIX[i], value=meas.matrix.flatten()[i], min=-1.1, max=1.1)  # min=-1.1, max=1.1
         for i in range(len(VAR_PARR)):
-            model.set_param_hint(VAR_PARR[i], value=meas.p_arr[i], min=-0.01, max=0.01)
+            model.set_param_hint(VAR_PARR[i], value=meas.p_arr[i], min=-1.1, max=1.1)  # min=-0.01, max=0.01
     else:
         raise RuntimeError("The meas object {} does not belong to any known classes".format(meas))
 
@@ -439,8 +439,11 @@ def plot_1d(meas, nos_p, nos_m, params_pol, params_nsf=None, params_sf=None):
         data_file_p = RawData(scan_number_p)
         index = univ.positions.index(data_file_p.scan_posn)
         coils = data_file_p.scan_data
-        if scan_number_p in meas.nos_crt_nsf:
-            counts_p = correct_count(scan_number_p, meas.nos_ref_nsf)
+        if isinstance(meas, MeasNuc):
+            if scan_number_p in meas.nos_crt_nsf:
+                counts_p = correct_count(scan_number_p, meas.nos_ref_nsf)
+            else:
+                counts_p = data_file_p.scan_count
         else:
             counts_p = data_file_p.scan_count
         monitor = data_file_p.monitor_count
@@ -464,9 +467,11 @@ def plot_1d(meas, nos_p, nos_m, params_pol, params_nsf=None, params_sf=None):
             coil_4d = coils
         scan_number_m = nos_m[numor]
         data_file_m = RawData(scan_number_m)
-        counts_m = data_file_m.scan_count
-        if scan_number_m in meas.nos_crt_sf:
-            counts_m = correct_count(scan_number_m, meas.nos_ref_sf)
+        if isinstance(meas, MeasNuc):
+            if scan_number_m in meas.nos_crt_sf:
+                counts_m = correct_count(scan_number_m, meas.nos_ref_sf)
+            else:
+                counts_m = data_file_m.scan_count
         else:
             counts_m = data_file_m.scan_count
 
@@ -491,17 +496,19 @@ def plot_1d(meas, nos_p, nos_m, params_pol, params_nsf=None, params_sf=None):
                 ttl_coil.append(posn)
                 ttl_ang.append(ang_now)
         if len(ttl_coil) == 3 and len(ttl_ang) == 3:
-            plt_ttl = "{}: {:.2f}°, {}: {:.2f}°, {}: {:.2f}°".format(ttl_coil[0], np.rad2deg(ttl_ang[0]), ttl_coil[1],
-                                                                     np.rad2deg(ttl_ang[1]), ttl_coil[2],
-                                                                     np.rad2deg(ttl_ang[2]))
+            # plt_ttl = "{}: {:.2f}°, {}: {:.2f}°, {}: {:.2f}°".format(ttl_coil[0], np.rad2deg(ttl_ang[0]), ttl_coil[1],
+            #                                                          np.rad2deg(ttl_ang[1]), ttl_coil[2],
+            #                                                          np.rad2deg(ttl_ang[2]))
+            plt_ttl = "{}: {:.2f}, {}: {:.2f}, {}: {:.2f}".format(ttl_coil[0], ttl_ang[0], ttl_coil[1], ttl_ang[1],
+                                                                  ttl_coil[2], ttl_ang[2])
         else:
             raise RuntimeError("Failed to find the coils and/or currents.")
         c_oi, c_of, c_ii, c_if = coils_plot[0], coils_plot[1], coils_plot[2], coils_plot[3]
 
         fit_pol = coil2pol(c_oi, c_of, c_ii, c_if, params_pol.pre_oi, params_pol.pre_of, params_pol.pre_ii,
                            params_pol.pre_if, params_pol.shift_oi, params_pol.shift_of, params_pol.shift_ii,
-                           params_pol.shift_if, meas.delta_i, meas.delta_f,
-                           params_pol.p_init)  # , *params_pol.matrix,                           *params_pol.p_arr
+                           params_pol.shift_if, meas.delta_i, meas.delta_f, params_pol.p_init,
+                           *params_pol.matrix, *params_pol.p_arr)  #
 
         filename = "Scan{:d}_{:d}.png".format(scan_number_p, scan_number_m)
         filename = "/".join([FOLDER_1D_MNSI, filename])
@@ -514,29 +521,29 @@ def plot_1d(meas, nos_p, nos_m, params_pol, params_nsf=None, params_sf=None):
         pols = pols[sort_ind]
         ax.errorbar(scan_x, counts_p, yerr=np.sqrt(counts_p), color=COLOUR_NSF, fmt="1", markersize=10,
                     label="Meas NSF")
-        ax.errorbar(scan_x, counts_m, yerr=np.sqrt(counts_m), color=COLOUR_SF, fmt="2", markersize=10, label="Meas SF")
+        ax.errorbar(scan_x, counts_m, yerr=np.sqrt(counts_m), color=COLOUR_SF, fmt="2", markersize=10, label="MeasSF")
         ax.set_xlabel("{} (A)".format(data_file_p.scan_posn))
         ax.set_ylabel("Counts")
         ax.set_title(plt_ttl)
         ax.tick_params(axis="both", direction="in")
         ax2 = ax.twinx()  # instantiate a second axes that shares the same x-axis
         colour_ax2 = "green"
-        ax2.plot(scan_x, pols, "3", markersize=10, color=colour_ax2, label="Pol Meas")
+        ax2.plot(scan_x, pols, "3", markersize=10, color=colour_ax2, label="MeasPol")
         if params_nsf and params_sf:
             fit_nsf = coil2count(params_nsf.amp, params_nsf.sign, c_oi, c_of, c_ii, c_if, params_nsf.pre_oi,
                                  params_nsf.pre_of, params_nsf.pre_ii, params_nsf.pre_if, params_nsf.shift_oi,
                                  params_nsf.shift_of, params_nsf.shift_ii, params_nsf.shift_if, meas.delta_i,
-                                 meas.delta_f, params_nsf.p_init)  # , *params_pol.matrix, *params_pol.p_arr
+                                 meas.delta_f, params_nsf.p_init, *params_pol.matrix, *params_pol.p_arr)  #
             # print(scan_number_p, "\n", pol_nsf, "\n", fit_nsf)
             fit_sf = coil2count(params_sf.amp, params_sf.sign, c_oi, c_of, c_ii, c_if, params_sf.pre_oi,
                                 params_sf.pre_of, params_sf.pre_ii, params_sf.pre_if, params_sf.shift_oi,
                                 params_sf.shift_of, params_sf.shift_ii, params_sf.shift_if, meas.delta_i, meas.delta_f,
-                                params_sf.p_init)  # , *params_pol.matrix, *params_pol.p_arr
+                                params_sf.p_init, *params_pol.matrix, *params_pol.p_arr)  #
             fit_nsf = norm2count(fit_nsf, monitor)
             fit_sf = norm2count(fit_sf, monitor)
-            ax.plot(coil_plot, fit_nsf, color=COLOUR_NSF, label="Fit NSF")
-            ax.plot(coil_plot, fit_sf, color=COLOUR_SF, label="Fit SF")
-            ax2.plot(coil_plot, fit_pol, color=colour_ax2, label="Pol Fit")
+            ax.plot(coil_plot, fit_nsf, color=COLOUR_NSF, label="FitNSF")
+            ax.plot(coil_plot, fit_sf, color=COLOUR_SF, label="FitSF")
+        ax2.plot(coil_plot, fit_pol, color=colour_ax2, label="FitPol")
         ax2.tick_params(axis="y", direction="in")
         ax2.set_ylabel(r"Polarisation", color=colour_ax2)
         ax2.tick_params(axis='y', color=colour_ax2, labelcolor=colour_ax2)
@@ -683,7 +690,7 @@ def coils_fitting(meas, scan, pre_oi=None, pre_of=None, pre_ii=None, pre_if=None
         sf_params.lmfit_loader(meas=meas, monitor=monitor, currents=scan_coils,
                                data_obj=count2norm(counts_m, monitor))
 
-        plot_1d(meas, nos_p, nos_m, fit_params, nsf_params, sf_params)
+        # plot_1d(meas, nos_p, nos_m, fit_params, nsf_params, sf_params)
         # fname = "PolMat_Nuc.dat"
         # f_nuc = open(fname, "w+")
         # f_nuc.write("pi, pf, pif, corrected by p_init = {:.3f}\n".format(fit_params.p_init))
@@ -722,8 +729,17 @@ def coils_fitting(meas, scan, pre_oi=None, pre_of=None, pre_ii=None, pre_if=None
                                                                                         counts_p[i], counts_m[i],
                                                                                         monitor[i]))
         f_coils.close()
-        print(fit_params.matrix)
-        plot_1d(meas, nos_p, nos_m, fit_params)
+        # print(fit_params.matrix)
+        pol_mat = np.array(fit_params.matrix).reshape((3, 3))
+        pol_ext = np.array(fit_params.p_arr)
+        pix = np.array([1, 0, 0])
+        piy = np.array([0, 1, 0])
+        piz = np.array([0, 0, 1])
+        pf1 = np.matmul(pol_mat, pix) + pol_ext
+        pf2 = np.matmul(pol_mat, piy) + pol_ext
+        pf3 = np.matmul(pol_mat, piz) + pol_ext
+        print(pf1, pf2, pf3)
+        # plot_1d(meas, nos_p, nos_m, fit_params)
         # coi = 2.05
         # cii = 3.0
         # ai = pre_oi * coi + shift_oi
