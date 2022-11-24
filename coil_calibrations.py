@@ -68,6 +68,18 @@ VAR_P2 = "p2"
 VAR_P3 = "p3"
 VAR_PARR = [VAR_P1, VAR_P2, VAR_P3]
 
+VAR_NUC = "nuc"
+VAR_MAG_Y = "mag_y"
+VAR_MAG_Z = "mag_z"
+VAR_INTFR_Y = "intfr_y"
+VAR_INTFR_Z = "intfr_z"
+VAR_MAG_MIX = "mag_mix"
+VAR_CHIRAL = "chiral"
+VAR_RE_INTFR_Y = "re_intfr_y"
+VAR_RE_INTFR_Z = "re_intfr_z"
+VAR_TENSOR = [VAR_NUC, VAR_MAG_Y, VAR_MAG_Z, VAR_INTFR_Y, VAR_INTFR_Z, VAR_MAG_MIX, VAR_CHIRAL, VAR_RE_INTFR_Y,
+              VAR_RE_INTFR_Z]
+
 VAR_DELTA_I = 'delta_i'
 VAR_DELTA_F = 'delta_f'
 VAR_P_INIT = 'p_init'
@@ -87,68 +99,58 @@ AXES = [AXIS_X, AXIS_Y, AXIS_Z]
 SHIFT_LIM = 0.1 * np.pi
 
 
-class MeasNuc:
-    def __init__(self):
-        self.nos_oi_nsf = [3173]
-        self.nos_oi_sf = [3174]
+class Measurement:
+    def __init__(self, peak):
+        self.peak = peak
+        if self.peak == PEAK_NUC:
+            self.nos_oi_nsf = [3173]
+            self.nos_oi_sf = [3174]
 
-        self.nos_of_nsf = [3175]
-        self.nos_of_sf = [3176]
+            self.nos_of_nsf = [3175]
+            self.nos_of_sf = [3176]
 
-        self.nos_ii_nsf = [3179]
-        self.nos_ii_sf = [3180]
+            self.nos_ii_nsf = [3179]
+            self.nos_ii_sf = [3180]
 
-        self.nos_if_nsf = [3181, 3183]
-        self.nos_if_sf = [3182, 3184]
+            self.nos_if_nsf = [3181, 3183]
+            self.nos_if_sf = [3182, 3184]
 
-        self.nos_fit_nsf = [3173, 3175] + list(range(3179, 3216 + 1, 2)) + list(range(3218, 3229 + 1, 2)) + list(
-            range(3230, 3257 + 1, 4)) + list(range(3231, 3257 + 1, 4))
-        self.nos_fit_sf = [3174, 3176] + list(range(3180, 3216 + 1, 2)) + list(range(3219, 3229 + 1, 2)) + list(
-            range(3232, 3257 + 1, 4)) + list(range(3233, 3257 + 1, 4))
-        self.nos_fit_nsf.sort()
-        self.nos_fit_sf.sort()
+            self.nos_fit_nsf = [3173, 3175] + list(range(3179, 3216 + 1, 2)) + list(range(3218, 3229 + 1, 2)) + list(
+                range(3230, 3257 + 1, 4)) + list(range(3231, 3257 + 1, 4))
+            self.nos_fit_sf = [3174, 3176] + list(range(3180, 3216 + 1, 2)) + list(range(3219, 3229 + 1, 2)) + list(
+                range(3232, 3257 + 1, 4)) + list(range(3233, 3257 + 1, 4))
+            self.nos_fit_nsf.sort()
+            self.nos_fit_sf.sort()
 
-        self.nos_crt_nsf = [3173, 3175]
-        self.nos_crt_sf = [3174, 3176]
+            self.nos_crt_nsf = [3173, 3175]
+            self.nos_crt_sf = [3174, 3176]
+            self.nos_ref_nsf = list(range(3185, 3216 + 1, 2)) + list(range(3218, 3223 + 1, 2))
+            self.nos_ref_sf = list(range(3186, 3216 + 1, 2)) + list(range(3219, 3223 + 1, 2))
+            self.nos_ref_nsf.sort()
+            self.nos_ref_sf.sort()
 
-        self.nos_ref_nsf = list(range(3185, 3216 + 1, 2)) + list(range(3218, 3223 + 1, 2))
-        self.nos_ref_sf = list(range(3186, 3216 + 1, 2)) + list(range(3219, 3223 + 1, 2))
-        self.nos_ref_nsf.sort()
-        self.nos_ref_sf.sort()
+            self.theta = np.deg2rad(99.0 / 2.0)
 
-        self.theta = np.deg2rad(99.0 / 2.0)
+            self.matrix = np.identity(3)
+            self.p_arr = np.zeros(3)
+        elif self.peak == PEAK_MAG:
+            self.nos_mag_nsf = list(range(3259, 3286 + 1, 4)) + list(range(3260, 3286 + 1, 4)) + list(
+                range(3287, 3328 + 1, 2))
+            self.nos_mag_sf = list(range(3261, 3286 + 1, 4)) + list(range(3262, 3286 + 1, 4)) + list(
+                range(3288, 3328 + 1, 2))
+            self.nos_mag_nsf.sort()
+            self.nos_mag_sf.sort()
+
+            self.theta = np.deg2rad(97.12 / 2.0)
+
+            self.matrix = np.array([[0, -1, -1], [0, 0, -1], [0, -1, 0]])
+            # self.matrix[0] = 1
+            self.p_arr = np.array([0, 0, 0])
+        else:
+            raise RuntimeError("Invalid measured peak position given: {}".format(self.peak))
+
         self.delta_i = np.pi / 2.0 - self.theta
         self.delta_f = np.pi / 2.0 + self.theta
-        self.matrix = np.identity(3)
-        self.p_arr = np.zeros(3)
-
-        # to be removed after deleting fit_coil_nuclear.py
-        # self.frequency_oi = 0.736418
-        # self.frequency_of = 0.737330
-        # self.frequency_ii = 1.424906
-        # self.frequency_if = 1.031450
-        # self.shift_oi = -0.007004
-        # self.shift_of = -0.107698
-        # self.shift_ii = -0.389777
-        # self.shift_if = -0.377453
-
-
-class MeasMag:
-    def __init__(self):
-        self.nos_mag_nsf = list(range(3259, 3286 + 1, 4)) + list(range(3260, 3286 + 1, 4)) + list(
-            range(3287, 3328 + 1, 2))
-        self.nos_mag_sf = list(range(3261, 3286 + 1, 4)) + list(range(3262, 3286 + 1, 4)) + list(
-            range(3288, 3328 + 1, 2))
-        self.nos_mag_nsf.sort()
-        self.nos_mag_sf.sort()
-        # self.nos_mag_nsf = [3283, 3284] + list(range(3287, 3300 + 1, 2))
-        # self.nos_mag_sf = [3285, 3286] + list(range(3288, 3300 + 1, 2))
-        self.theta = np.deg2rad(97.12 / 2.0)
-        self.delta_i = np.pi / 2.0 - self.theta
-        self.delta_f = np.pi / 2.0 + self.theta
-        self.matrix = np.array([[0, -1, -1], [0, 0, -1], [0, -1, 0]])
-        # self.matrix[0] = 1
-        self.p_arr = np.array([0, 0, 0])
 
 
 class FitParams:
@@ -166,8 +168,8 @@ class FitParams:
         self.p_init = p_init
         self.amp = amp
         self.sign = sign
-        self.matrix = np.identity(3).flatten()
-        self.p_arr = np.zeros(3)
+        self.pol_mat_flat = np.empty(9)
+        self.p_cr8 = np.empty(3)  # the extra polarisation created by the scattering
 
     def lmfit_loader(self, meas, monitor, currents, data_obj):
         prefactors = [self.pre_oi, self.pre_of, self.pre_ii, self.pre_if]
@@ -232,7 +234,7 @@ class FitParams:
             if self.obj == OBJ_CNT:
                 self.amp = result.params[VAR_AMP].value
             if self.obj == OBJ_MAG:
-                self.matrix = [result.params[var].value for var in VAR_MATRIX]
+                self.pol_mat_flat = [result.params[var].value for var in VAR_MATRIX]
             # # print("Variables matrix: {}".format(VAR_MATRIX))
             # # print("Matrix: {}".format(self.matrix))
             # print(["Matrix element {}, value {}".format(var, result.params[var].value) for var in VAR_MATRIX])
@@ -273,6 +275,29 @@ def coils2angles(currents, prefactors, shifts):
 
 def coil2angle(current, prefactor, shift):
     return prefactor * current + shift
+
+
+def pol_mat_cal(px, py, pz, nuc, mag_y, mag_z, intfr_y, intfr_z, mag_mix, chiral, re_intfr_y, re_intfr_z):
+    sig_x = nuc + mag_y + mag_z + px * abs(chiral)
+    sig_y = nuc + mag_y + mag_z + py * re_intfr_y
+    sig_z = nuc + mag_y + mag_z + pz * re_intfr_z
+    sig_tot = nuc + mag_y + mag_z + px * abs(chiral) + py * re_intfr_y + pz * re_intfr_z
+    tensor_xx = (nuc - mag_y - mag_z) / sig_x
+    tensor_yx = intfr_z / sig_y
+    tensor_zx = -intfr_y / sig_z
+    tensor_xy = -intfr_z / sig_x
+    tensor_yy = (nuc + mag_y - mag_z) / sig_y
+    tensor_zy = -mag_mix / sig_z
+    tensor_xz = intfr_y / sig_x
+    tensor_yz = mag_mix / sig_y
+    tensor_zz = (nuc - mag_y + mag_z) / sig_z
+    created_x = chiral / sig_tot
+    created_y = re_intfr_y / sig_tot
+    created_z = re_intfr_z / sig_tot
+    pol_tensor = np.array(
+        [[tensor_xx, tensor_yx, tensor_zx], [tensor_xy, tensor_yy, tensor_zy], [tensor_xz, tensor_yz, tensor_zz]])
+    created_pol = np.array([created_x, created_y, created_z])
+    return pol_tensor, created_pol
 
 
 def coil2pol(c_oi, c_of, c_ii, c_if, pre_oi, pre_of, pre_ii, pre_if, shift_oi, shift_of, shift_ii, shift_if, delta_i,
@@ -345,22 +370,23 @@ def set_coil(model, coil_scanned, coil_fitted, index, currents, prefactors, shif
 
 
 def set_matrix(model, meas):
-    if isinstance(meas, MeasNuc):
+    if meas.peak == PEAK_NUC:
         for i in range(len(VAR_MATRIX)):
-            model.set_param_hint(VAR_MATRIX[i], value=meas.matrix.flatten()[i], vary=False)
+            model.set_param_hint(VAR_MATRIX[i], value=meas.pol_mat_flat.flatten()[i], vary=False)
         for i in range(len(VAR_PARR)):
-            model.set_param_hint(VAR_PARR[i], value=meas.p_arr[i], vary=False)
-    elif isinstance(meas, MeasMag):
+            model.set_param_hint(VAR_PARR[i], value=meas.p_cr8[i], vary=False)
+    elif meas.peak == PEAK_MAG:
         for i in range(len(VAR_MATRIX)):
-            model.set_param_hint(VAR_MATRIX[i], value=meas.matrix.flatten()[i], min=-1.1, max=1.1)  # min=-1.1, max=1.1
+            model.set_param_hint(VAR_MATRIX[i], value=meas.pol_mat_flat.flatten()[i], min=-1.1,
+                                 max=1.1)  # min=-1.1, max=1.1
         for i in range(len(VAR_PARR)):
-            model.set_param_hint(VAR_PARR[i], value=meas.p_arr[i], min=-1.1, max=1.1)  # min=-0.01, max=0.01
+            model.set_param_hint(VAR_PARR[i], value=meas.p_cr8[i], min=-1.1, max=1.1)  # min=-0.01, max=0.01
     else:
         raise RuntimeError("The meas object {} does not belong to any known classes".format(meas))
 
 
 def set_pinit(model, meas, p_init):
-    if isinstance(meas, MeasNuc):
+    if isinstance(meas, Measurement):
         model.set_param_hint(VAR_P_INIT, value=p_init, min=0.7, max=0.85)
     else:
         model.set_param_hint(VAR_P_INIT, value=p_init, vary=False)
@@ -439,7 +465,7 @@ def plot_1d(meas, nos_p, nos_m, params_pol, params_nsf=None, params_sf=None):
         data_file_p = RawData(scan_number_p)
         index = univ.positions.index(data_file_p.scan_posn)
         coils = data_file_p.scan_data
-        if isinstance(meas, MeasNuc):
+        if isinstance(meas, Measurement):
             if scan_number_p in meas.nos_crt_nsf:
                 counts_p = correct_count(scan_number_p, meas.nos_ref_nsf)
             else:
@@ -467,7 +493,7 @@ def plot_1d(meas, nos_p, nos_m, params_pol, params_nsf=None, params_sf=None):
             coil_4d = coils
         scan_number_m = nos_m[numor]
         data_file_m = RawData(scan_number_m)
-        if isinstance(meas, MeasNuc):
+        if isinstance(meas, Measurement):
             if scan_number_m in meas.nos_crt_sf:
                 counts_m = correct_count(scan_number_m, meas.nos_ref_sf)
             else:
@@ -508,7 +534,7 @@ def plot_1d(meas, nos_p, nos_m, params_pol, params_nsf=None, params_sf=None):
         fit_pol = coil2pol(c_oi, c_of, c_ii, c_if, params_pol.pre_oi, params_pol.pre_of, params_pol.pre_ii,
                            params_pol.pre_if, params_pol.shift_oi, params_pol.shift_of, params_pol.shift_ii,
                            params_pol.shift_if, meas.delta_i, meas.delta_f, params_pol.p_init,
-                           *params_pol.matrix, *params_pol.p_arr)  #
+                           *params_pol.pol_mat_flat, *params_pol.p_cr8)  #
 
         filename = "Scan{:d}_{:d}.png".format(scan_number_p, scan_number_m)
         filename = "/".join([FOLDER_1D_MNSI, filename])
@@ -533,12 +559,12 @@ def plot_1d(meas, nos_p, nos_m, params_pol, params_nsf=None, params_sf=None):
             fit_nsf = coil2count(params_nsf.amp, params_nsf.sign, c_oi, c_of, c_ii, c_if, params_nsf.pre_oi,
                                  params_nsf.pre_of, params_nsf.pre_ii, params_nsf.pre_if, params_nsf.shift_oi,
                                  params_nsf.shift_of, params_nsf.shift_ii, params_nsf.shift_if, meas.delta_i,
-                                 meas.delta_f, params_nsf.p_init, *params_pol.matrix, *params_pol.p_arr)  #
+                                 meas.delta_f, params_nsf.p_init, *params_pol.pol_mat_flat, *params_pol.p_cr8)  #
             # print(scan_number_p, "\n", pol_nsf, "\n", fit_nsf)
             fit_sf = coil2count(params_sf.amp, params_sf.sign, c_oi, c_of, c_ii, c_if, params_sf.pre_oi,
                                 params_sf.pre_of, params_sf.pre_ii, params_sf.pre_if, params_sf.shift_oi,
                                 params_sf.shift_of, params_sf.shift_ii, params_sf.shift_if, meas.delta_i, meas.delta_f,
-                                params_sf.p_init, *params_pol.matrix, *params_pol.p_arr)  #
+                                params_sf.p_init, *params_pol.pol_mat_flat, *params_pol.p_cr8)  #
             fit_nsf = norm2count(fit_nsf, monitor)
             fit_sf = norm2count(fit_sf, monitor)
             ax.plot(coil_plot, fit_nsf, color=COLOUR_NSF, label="FitNSF")
@@ -730,8 +756,8 @@ def coils_fitting(meas, scan, pre_oi=None, pre_of=None, pre_ii=None, pre_if=None
                                                                                         monitor[i]))
         f_coils.close()
         # print(fit_params.matrix)
-        pol_mat = np.array(fit_params.matrix).reshape((3, 3))
-        pol_ext = np.array(fit_params.p_arr)
+        pol_mat = np.array(fit_params.pol_mat_flat).reshape((3, 3))
+        pol_ext = np.array(fit_params.p_cr8)
         pix = np.array([1, 0, 0])
         piy = np.array([0, 1, 0])
         piz = np.array([0, 0, 1])
@@ -750,7 +776,7 @@ def coils_fitting(meas, scan, pre_oi=None, pre_of=None, pre_ii=None, pre_if=None
         # print(np.matmul(pf_scatt, np.transpose(pi_scatt)))
 
 
-measure = MeasNuc()
+measure = Measurement(peak=PEAK_NUC)
 
 pre_oi, shift_oi, p_init = coils_fitting(meas=measure, scan=OBJ_OI)
 # c_oi = phase2current(precession_phase=np.pi / 2.0, prefactor=pre_oi, shift=shift_oi)
@@ -793,6 +819,6 @@ pre_oi, shift_oi, pre_of, shift_of, pre_ii, shift_ii, pre_if, shift_if, p_init =
 coils_fitting(meas=measure, scan=OBJ_CNT, pre_oi=pre_oi, pre_of=pre_of, pre_ii=pre_ii, pre_if=pre_if,
               shift_oi=shift_oi, shift_of=shift_of, shift_iif=shift_ii, p_init=p_init)
 
-measure = MeasMag()
+measure = Measurement(peak=PEAK_MAG)
 coils_fitting(meas=measure, scan=OBJ_MAG, pre_oi=pre_oi, pre_of=pre_of, pre_ii=pre_ii, pre_if=pre_if,
               shift_oi=shift_oi, shift_of=shift_of, shift_iif=shift_ii, p_init=p_init)
